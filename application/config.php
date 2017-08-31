@@ -187,9 +187,9 @@ return [
 
     'cache'                  => [
         // 驱动方式
-        'type'   => 'File',
+        'type'   => 'Redis',
         // 缓存保存目录
-        'path'   => CACHE_PATH,
+        'root'   => '127.0.0.1',
         // 缓存前缀
         'prefix' => '',
         // 缓存有效期 0表示永久缓存

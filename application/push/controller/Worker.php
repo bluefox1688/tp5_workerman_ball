@@ -7,6 +7,7 @@ use think\worker\Server;
 class Worker extends Server
 {
     protected $socket = 'websocket://0.0.0.0:2346';
+    protected $processes = 1;
 
     public function onMessage($connection, $data)
     {
@@ -18,9 +19,8 @@ class Worker extends Server
         switch ($type) {
             case 'login':
                 $username = $data['username'];
-                $userlist = [];
                 $userlist = cache('userlist');
-                if($userlist){
+                if ($userlist) {
 
                     foreach ($userlist as $key => $value) {
                         if ($value['username'] == $username) {
@@ -29,16 +29,17 @@ class Worker extends Server
                     }
                 }
                 $userinfo = [
-                    'username'=>$data['username'],
-                    'x'=>$data['x'],
-                    'y'=>$data['y'],
+                    'username' => $username,
+                    'x' => $data['x'],
+                    'y' => $data['y'],
                 ];
                 $userlist[] = $userinfo;
-                cache('userlist',$userlist);
-                foreach ($this->worker->connections as $conn){
-                    $conn->send(json_encode(['status'=>200,'msg'=>$userinfo]));
+                $connection->username = $username;
+                cache('userlist', $userlist);
+                foreach ($this->worker->connections as $conn) {
+                    $conn->send(json_encode(['status' => 200, 'msg' => $userinfo]));
                 }
-                $conn->send(json_encode(['status'=>500,'msg'=>$userlist]));
+                $connection->send(json_encode(['status' => 500, 'msg' => $userlist]));
                 break;
             case 'move':
                 $userlist = cache('userlist');
@@ -50,9 +51,9 @@ class Worker extends Server
                 }
                 cache('userlist', $userlist);
                 $userinfo = [
-                    'username'=>$data['username'],
-                    'x'=>$data['x'],
-                    'y'=>$data['y']
+                    'username' => $data['username'],
+                    'x' => $data['x'],
+                    'y' => $data['y']
                 ];
 
                 foreach ($this->worker->connections as $conn) {
@@ -61,11 +62,11 @@ class Worker extends Server
                 break;
             case 'message':
                 $msg = [
-                    'username'=>$data['username'],
-                    'info'=>$data['info'],
+                    'username' => $data['username'],
+                    'info' => $data['info'],
                 ];
-                foreach($this->worker->connections as $conn){
-                    $conn->send(json_encode(['status'=>600,'msg'=>$msg]));
+                foreach ($this->worker->connections as $conn) {
+                    $conn->send(json_encode(['status' => 600, 'msg' => $msg]));
                 }
                 break;
 
@@ -79,7 +80,17 @@ class Worker extends Server
 
     public function onClose($connection)
     {
-
+        $userlist = cache('userlist');
+        foreach ($userlist as $key => $value) {
+            if ($value['username'] == $connection->username) {
+                unset($userlist[$key]);
+                break;
+            }
+        }
+        cache('userlist', $userlist);
+        foreach ($this->worker->connections as $conn) {
+            $conn->send(json_encode(['status' => 500, 'msg' => $userlist]));
+        }
     }
 
 
